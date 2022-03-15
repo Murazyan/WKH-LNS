@@ -1,4 +1,4 @@
-package wkh.lns.dto;
+package wkh.lns.models;
 
 import lombok.Getter;
 import lombok.Setter;
@@ -10,7 +10,11 @@ import java.util.List;
 @Setter
 public class Basket {
 
-    private List<ItemResponse> items;
+    private List<Item> items;
     private BigDecimal total;
     private BigDecimal saleTax;
+
+    public Basket(final List<Item> items) {
+        this.items = items;
+    }
 }

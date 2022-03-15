@@ -12,7 +12,7 @@ import java.math.BigDecimal;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class ItemResponse {
+public class ItemDto {
 
     private int count;
 

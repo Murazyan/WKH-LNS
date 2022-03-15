@@ -1,10 +1,10 @@
 package wkh.lns.service.impl;
 
-import wkh.lns.dto.Basket;
-import wkh.lns.dto.ItemResponse;
+import wkh.lns.dto.BasketDto;
+import wkh.lns.dto.ItemDto;
+import wkh.lns.mapper.BasketMapper;
+import wkh.lns.models.Basket;
 import wkh.lns.models.Item;
-import wkh.lns.models.enums.GoodsOrigin;
-import wkh.lns.models.enums.MeasurementUnit;
 import wkh.lns.service.GoodsService;
 import wkh.lns.service.TaxCalculator;
 
@@ -14,36 +14,27 @@ import java.util.List;
 public class GoodsServiceImpl implements GoodsService {
 
     private final TaxCalculator taxCalculator;
+    private final BasketMapper basketMapper;
 
-    public GoodsServiceImpl(final TaxCalculator taxCalculator) {
+    public GoodsServiceImpl(final TaxCalculator taxCalculator, final BasketMapper basketMapper) {
         this.taxCalculator = taxCalculator;
+        this.basketMapper = basketMapper;
     }
 
     @Override
-    public Basket add(final List<Item> items) {
-        final Basket basket = new Basket();
-        basket.setItems(taxCalculator.calculate(items));
-        var total = basket.getItems().stream()
-                .map(ItemResponse::getPrice)    // map
+    public BasketDto add(final List<Item> items) {
+        final Basket basket = new Basket(items);
+        List<ItemDto> itemsDto = taxCalculator.calculate(items);
+        var total = itemsDto.stream()
+                .map(ItemDto::getPrice)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
         var purePrice = items.stream()
                 .map(item -> item.getGoods().getPrice().multiply(BigDecimal.valueOf(item.getCount())))
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
         basket.setTotal(total);
         basket.setSaleTax(total.subtract(purePrice));
-        return basket;
+
+        return basketMapper.apply(basket, itemsDto);
     }
 
-    @Override
-    public void printBasketData(final Basket basket) {
-        basket.getItems().forEach(itemResponse -> {
-            var itemLine = "" + itemResponse.getCount();
-            itemLine += itemResponse.getOrigin() == GoodsOrigin.IMPORTED ? " imported " : " ";
-            itemLine += itemResponse.getMeasurement() != MeasurementUnit.QUANTITY ? itemResponse.getMeasurement() + " of " : " ";
-            itemLine += itemResponse.getGoodsName() + ": " + itemResponse.getPrice();
-            System.out.println(itemLine);
-        });
-        System.out.println("Sales Taxes: " + basket.getSaleTax());
-        System.out.println("Total: " + basket.getTotal());
-    }
 }

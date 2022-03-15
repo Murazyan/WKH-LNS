@@ -1,61 +1,52 @@
 package wkh.lns.service.impl;
 
-import wkh.lns.dto.ItemResponse;
+import wkh.lns.dto.ItemDto;
+import wkh.lns.mapper.ItemMapper;
 import wkh.lns.models.Item;
 import wkh.lns.models.enums.GoodsOrigin;
 import wkh.lns.models.enums.GoodsType;
 import wkh.lns.service.TaxCalculator;
 
-import java.io.FileReader;
-import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Properties;
 
 public class TaxCalculatorImpl implements TaxCalculator {
 
-    public int BASIC_TAX;
-    public int IMPORTED_TAX;
+    private final int BASIC_TAX;
+    private final int IMPORTED_TAX;
+    private final ItemMapper itemMapper;
 
-    public TaxCalculatorImpl() {
-        try {
-            final FileReader reader = new FileReader(this.getClass().getResource("/application.properties").getFile());
-            final Properties p = new Properties();
-            p.load(reader);
-            BASIC_TAX = Integer.parseInt(p.getProperty("tax.basic", "10"));
-            IMPORTED_TAX = Integer.parseInt(p.getProperty("tax.imported", "5"));
-        } catch (IOException e) {
-            System.out.println("Unable to read from properties");
-            e.printStackTrace();
-        }
+    public TaxCalculatorImpl(final ItemMapper itemMapper) {
+        BASIC_TAX = 10;
+        IMPORTED_TAX = 5;
+        this.itemMapper = itemMapper;
     }
 
 
     @Override
-    public List<ItemResponse> calculate(final List<Item> items) {
-        final List<ItemResponse> itemList = new ArrayList<>();
+    public List<ItemDto> calculate(final List<Item> items) {
+        final List<ItemDto> itemList = new ArrayList<>();
         if (items != null)
             for (Item item : items) {
-                final ItemResponse itemResponse = map(item);
+                final ItemDto itemDto = itemMapper.apply(item);
                 if (item.getGoods().getType() != GoodsType.OTHER) {
-                    itemResponse.setPrice(item.getGoods().getPrice());
-                }
-                if (item.getGoods().getType() == GoodsType.OTHER) {
+                    itemDto.setPrice(item.getGoods().getPrice());
+                } else {
                     final BigDecimal price = item.getGoods().getPrice().multiply(BigDecimal.valueOf(item.getCount()))
                             .add(getPriceWithTax(item.getGoods().getPrice(), item.getCount(), BASIC_TAX));
-                    itemResponse.setPrice(price);
+                    itemDto.setPrice(price);
                 }
                 if (item.getGoods().getOrigin() == GoodsOrigin.IMPORTED) {
-                    if (itemResponse.getPrice() == null) {
+                    if (itemDto.getPrice() == null) {
                         final BigDecimal price = item.getGoods().getPrice().multiply(BigDecimal.valueOf(item.getCount()))
                                 .add(getPriceWithTax(item.getGoods().getPrice(), item.getCount(), IMPORTED_TAX));
-                        itemResponse.setPrice(price);
+                        itemDto.setPrice(price);
                     } else
-                        itemResponse.addPrice(getPriceWithTax(item.getGoods().getPrice(), item.getCount(), IMPORTED_TAX));
+                        itemDto.addPrice(getPriceWithTax(item.getGoods().getPrice(), item.getCount(), IMPORTED_TAX));
                 }
-                itemList.add(itemResponse);
+                itemList.add(itemDto);
             }
         return itemList;
     }
@@ -67,13 +58,4 @@ public class TaxCalculatorImpl implements TaxCalculator {
     }
 
 
-    private ItemResponse map(final Item item) {
-        final ItemResponse itemResponse = new ItemResponse();
-        itemResponse.setCount(item.getCount());
-        itemResponse.setGoodsName(item.getGoods().getName());
-        itemResponse.setMeasurement(item.getGoods().getMeasurement());
-        itemResponse.setType(item.getGoods().getType());
-        itemResponse.setOrigin(item.getGoods().getOrigin());
-        return itemResponse;
-    }
 }

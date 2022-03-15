@@ -11,4 +11,5 @@ public class Item {
 
     private int count;
     private Goods goods;
+
 }
